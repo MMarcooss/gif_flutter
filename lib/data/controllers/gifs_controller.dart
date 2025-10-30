@@ -1,11 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/giphy_service.dart';
-import '../services/local_storage.dart'; // <- Nosso DatabaseService
+import '../services/local_storage.dart';
 
 class GifsController extends ChangeNotifier {
   final GiphyService _service;
-  final DatabaseService _db = DatabaseService();
+  final DatabaseService _db = DatabaseService(); // usa SharedPreferences
+
   String? get lastQuery => _lastQuery;
 
   GifsController(this._service);
@@ -27,35 +28,30 @@ class GifsController extends ChangeNotifier {
   Timer? _timer;
   static const Duration _shuffleInterval = Duration(seconds: 7);
 
-  /// Inicializa o controller: random_id + primeiro GIF
+  // ---------------- Inicialização ----------------
   Future<void> init() async {
     await _service.initRandomId();
     await fetchRandom();
     _startAutoShuffle();
   }
 
-  /// Alterna modo auto-shuffle
   void toggleAutoShuffle() {
     autoShuffle = !autoShuffle;
-    if (autoShuffle) {
+    if (autoShuffle)
       _startAutoShuffle();
-    } else {
+    else
       _timer?.cancel();
-    }
     notifyListeners();
   }
 
-  /// Inicia o timer de auto-shuffle
   void _startAutoShuffle() {
     _timer?.cancel();
     if (!autoShuffle) return;
-
     _timer = Timer.periodic(_shuffleInterval, (_) {
       if (!loading) fetchRandom(tag: _lastQuery, rating: _lastRating);
     });
   }
 
-  /// Busca GIF aleatório
   Future<void> fetchRandom({String? tag, String rating = 'g'}) async {
     loading = true;
     _trackedOnLoad = false;
@@ -64,8 +60,7 @@ class GifsController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final gif = await _service.fetchRandomGif(tag: tag, rating: rating);
-      currentGif = gif;
+      currentGif = await _service.fetchRandomGif(tag: tag, rating: rating);
     } catch (e) {
       currentGif = null;
       debugPrint('Erro ao buscar GIF: $e');
@@ -75,7 +70,6 @@ class GifsController extends ChangeNotifier {
     }
   }
 
-  /// Busca GIFs para o Grid
   Future<void> fetchGifs(String query, {String rating = 'g'}) async {
     gridLoading = true;
     gridError = null;
@@ -84,8 +78,7 @@ class GifsController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final results = await _service.searchGifs(query, rating: rating);
-      gifGrid = results;
+      gifGrid = await _service.searchGifs(query, rating: rating);
     } catch (e) {
       gridError = e.toString();
       gifGrid = [];
@@ -95,11 +88,8 @@ class GifsController extends ChangeNotifier {
     }
   }
 
-  /// Retry para grid
   void retryLastGridFetch() {
-    if (_lastQuery != null) {
-      fetchGifs(_lastQuery!, rating: _lastRating);
-    }
+    if (_lastQuery != null) fetchGifs(_lastQuery!, rating: _lastRating);
   }
 
   // ---------------- Analytics ----------------
@@ -117,11 +107,11 @@ class GifsController extends ChangeNotifier {
 
   // ---------------- Favoritos ----------------
   Future<void> toggleFavorite(GiphyGif gif) async {
-    final isFav = await _db.isFavorite(gif.id!);
+    final isFav = await isFavorite(gif.id ?? '');
     if (isFav) {
-      await _db.removeFavorite(gif.id!);
+      await _db.removeFavorite(gif.id ?? '');
     } else {
-      await _db.addFavorite(gif.id!, gif.title ?? '', gif.gifUrl ?? '');
+      await _db.addFavorite(gif.id ?? '', gif.title ?? '', gif.gifUrl ?? '');
     }
     notifyListeners();
   }
@@ -138,9 +128,7 @@ class GifsController extends ChangeNotifier {
   }
 
   // ---------------- Histórico ----------------
-  Future<void> addHistory(String query) async {
-    await _db.addHistory(query);
-  }
+  Future<void> addHistory(String query) async => await _db.addHistory(query);
 
   Future<List<String>> getHistory() async {
     final history = await _db.getHistory();
@@ -148,13 +136,11 @@ class GifsController extends ChangeNotifier {
   }
 
   // ---------------- Preferências ----------------
-  Future<void> setPreference(String key, String value) async {
-    await _db.setPreference(key, value);
-  }
+  Future<void> setPreference(String key, String value) async =>
+      await _db.setPreference(key, value);
 
-  Future<String?> getPreference(String key) async {
-    return await _db.getPreference(key);
-  }
+  Future<String?> getPreference(String key) async =>
+      await _db.getPreference(key);
 
   // ---------------- Reinicia auto-shuffle ----------------
   void restartAutoShuffle() {

@@ -8,6 +8,9 @@ const String _baseUrl = 'https://api.giphy.com/v1';
 class GiphyService {
   final String apiKey;
   String? _randomId;
+  static const _favoritesKey = 'favorites';
+  static const _historyKey = 'history';
+  static const _prefsKey = 'preferences';
 
   GiphyService({required this.apiKey});
 
@@ -111,6 +114,78 @@ class GiphyService {
     }
   }
 
+  // -------- FAVORITOS --------
+  Future<void> addFavorite(GiphyGif gif) async {
+    final prefs = await SharedPreferences.getInstance();
+    final favs = await getFavorites();
+
+    if (favs.indexWhere((f) => f['id'] == gif.id) == -1) {
+      favs.add(gif.toJson());
+      await prefs.setString(_favoritesKey, jsonEncode(favs));
+    }
+  }
+
+  Future<void> removeFavorite(String id) async {
+    final prefs = await SharedPreferences.getInstance();
+    final favs = await getFavorites();
+    favs.removeWhere((f) => f['id'] == id);
+    await prefs.setString(_favoritesKey, jsonEncode(favs));
+  }
+
+  Future<List<Map<String, dynamic>>> getFavorites() async {
+    final prefs = await SharedPreferences.getInstance();
+    final jsonString = prefs.getString(_favoritesKey);
+    if (jsonString == null) return [];
+    return List<Map<String, dynamic>>.from(jsonDecode(jsonString));
+  }
+
+  Future<bool> isFavorite(String id) async {
+    final favs = await getFavorites();
+    return favs.any((f) => f['id'] == id);
+  }
+
+  // -------- HISTÓRICO --------
+  Future<void> addHistory(String query) async {
+    final prefs = await SharedPreferences.getInstance();
+    final history = await getHistory();
+
+    history.removeWhere((h) => h['query'] == query);
+    history.insert(0, {'query': query});
+
+    if (history.length > 20) history.removeLast();
+    await prefs.setString(_historyKey, jsonEncode(history));
+  }
+
+  Future<List<Map<String, dynamic>>> getHistory() async {
+    final prefs = await SharedPreferences.getInstance();
+    final jsonString = prefs.getString(_historyKey);
+    if (jsonString == null) return [];
+    return List<Map<String, dynamic>>.from(jsonDecode(jsonString));
+  }
+
+  // -------- PREFERÊNCIAS --------
+  Future<void> setPreference(String key, String value) async {
+    final prefs = await SharedPreferences.getInstance();
+    final prefsMap = await getAllPreferences();
+    prefsMap[key] = value;
+    await prefs.setString(_prefsKey, jsonEncode(prefsMap));
+  }
+
+  Future<String?> getPreference(String key) async {
+    final prefs = await SharedPreferences.getInstance();
+    final jsonString = prefs.getString(_prefsKey);
+    if (jsonString == null) return null;
+    final Map<String, dynamic> decoded = jsonDecode(jsonString);
+    return decoded[key];
+  }
+
+  Future<Map<String, dynamic>> getAllPreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    final jsonString = prefs.getString(_prefsKey);
+    if (jsonString == null) return {};
+    return Map<String, dynamic>.from(jsonDecode(jsonString));
+  }
+
   /// Envia ping de analytics (fire-and-forget)
   Future<void> pingAnalytics(String? url) async {
     if (url == null) return;
@@ -137,6 +212,7 @@ class GiphyService {
 class GiphyGif {
   final String? id;
   final String? title;
+  final String? username;
   final String? gifUrl;
   final String? analyticsOnLoad;
   final String? analyticsOnClick;
@@ -144,6 +220,7 @@ class GiphyGif {
   GiphyGif({
     this.id,
     this.title,
+    this.username,
     this.gifUrl,
     this.analyticsOnLoad,
     this.analyticsOnClick,
@@ -162,6 +239,7 @@ class GiphyGif {
     return GiphyGif(
       id: json['id'] as String?,
       title: (json['title'] ?? 'Random GIF') as String?,
+      username: (json['username'] ?? 'Desconhecido') as String?,
       gifUrl: url,
       analyticsOnLoad: onload,
       analyticsOnClick: onclick,

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../data/controllers/gifs_controller.dart';
-import '../widgets/gif_display.dart';
 
 class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key});
@@ -45,7 +44,7 @@ class _HistoryPageState extends State<HistoryPage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.search),
-            onPressed: () => Navigator.pushNamed(context, '/search'),
+            onPressed: () => Navigator.pushNamed(context, '/'),
           ),
           IconButton(
             icon: const Icon(Icons.favorite),

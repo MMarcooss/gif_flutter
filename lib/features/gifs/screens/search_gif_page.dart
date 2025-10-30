@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../data/controllers/gifs_controller.dart';
 import '../widgets/gif_display.dart';
+import '../../../data/services/giphy_service.dart';
 
 class SearchGifPage extends StatefulWidget {
   const SearchGifPage({super.key});
@@ -20,9 +21,11 @@ class _SearchGifPageState extends State<SearchGifPage> {
   void initState() {
     super.initState();
     final controller = context.read<GifsController>();
-    // Preenche o TextField com a última busca se houver
+
+    // Preenche o TextField com a última busca, se houver
     if (controller.lastQuery != null && controller.lastQuery!.isNotEmpty) {
       _searchController.text = controller.lastQuery!;
+      controller.fetchGifs(controller.lastQuery!, rating: _rating);
     }
   }
 
@@ -35,10 +38,12 @@ class _SearchGifPageState extends State<SearchGifPage> {
 
   void _onSearchChanged(String query) {
     final controller = context.read<GifsController>();
+
     if (_debounce?.isActive ?? false) _debounce!.cancel();
-    _debounce = Timer(const Duration(milliseconds: 600), () {
+    _debounce = Timer(const Duration(milliseconds: 600), () async {
       if (query.trim().isNotEmpty) {
-        controller.fetchGifs(query.trim(), rating: _rating);
+        await controller.fetchGifs(query.trim(), rating: _rating);
+        await controller.addHistory(query.trim()); // Salva no histórico
         controller.restartAutoShuffle();
       }
     });
@@ -47,11 +52,22 @@ class _SearchGifPageState extends State<SearchGifPage> {
   void _onRatingChanged(String? value) {
     if (value == null) return;
     setState(() => _rating = value);
-    if (_searchController.text.trim().isNotEmpty) {
+
+    final query = _searchController.text.trim();
+    if (query.isNotEmpty) {
       final controller = context.read<GifsController>();
-      controller.fetchGifs(_searchController.text.trim(), rating: _rating);
+      controller.fetchGifs(query, rating: _rating);
       controller.restartAutoShuffle();
     }
+  }
+
+  Widget _buildGifItem(GiphyGif gif) {
+    final controller = context.read<GifsController>();
+
+    return GestureDetector(
+      onTap: () => Navigator.pushNamed(context, '/detail', arguments: gif),
+      child: GifDisplay(gif: gif, onFirstFrame: controller.trackOnLoad),
+    );
   }
 
   @override
@@ -63,14 +79,12 @@ class _SearchGifPageState extends State<SearchGifPage> {
         title: const Text('Buscar GIFs'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.history),
-            tooltip: 'Histórico',
-            onPressed: () => Navigator.pushNamed(context, '/history'),
+            icon: const Icon(Icons.favorite),
+            onPressed: () => Navigator.pushNamed(context, '/favorites'),
           ),
           IconButton(
-            icon: const Icon(Icons.favorite),
-            tooltip: 'Favoritos',
-            onPressed: () => Navigator.pushNamed(context, '/favorites'),
+            icon: const Icon(Icons.history),
+            onPressed: () => Navigator.pushNamed(context, '/history'),
           ),
         ],
       ),
@@ -155,44 +169,28 @@ class _SearchGifPageState extends State<SearchGifPage> {
                   );
                 }
 
-                return GridView.builder(
-                  padding: const EdgeInsets.all(8),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 8,
-                    mainAxisSpacing: 8,
-                  ),
-                  itemCount: controller.gifGrid.length,
-                  itemBuilder: (context, index) {
-                    final gif = controller.gifGrid[index];
-                    return Stack(
-                      children: [
-                        GifDisplay(
-                          gif: gif,
-                          onFirstFrame: controller.trackOnLoad,
-                        ),
-                        Positioned(
-                          top: 8,
-                          right: 8,
-                          child: FutureBuilder<bool>(
-                            future: controller.isFavorite(gif.id ?? ''),
-                            builder: (context, snapshot) {
-                              final isFav = snapshot.data ?? false;
-                              return IconButton(
-                                icon: Icon(
-                                  isFav
-                                      ? Icons.favorite
-                                      : Icons.favorite_border_outlined,
-                                  color: Colors.pinkAccent,
-                                ),
-                                onPressed: () => controller.toggleFavorite(gif),
-                              );
-                            },
-                          ),
-                        ),
-                      ],
-                    );
+                return RefreshIndicator(
+                  onRefresh: () async {
+                    final query = _searchController.text.trim();
+                    if (query.isNotEmpty) {
+                      await controller.fetchGifs(query, rating: _rating);
+                    }
                   },
+                  child: GridView.builder(
+                    padding: const EdgeInsets.all(8),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 8,
+                          mainAxisSpacing: 8,
+                          childAspectRatio: 0.8,
+                        ),
+                    itemCount: controller.gifGrid.length,
+                    itemBuilder: (context, index) {
+                      final gif = controller.gifGrid[index];
+                      return _buildGifItem(gif);
+                    },
+                  ),
                 );
               },
             ),
