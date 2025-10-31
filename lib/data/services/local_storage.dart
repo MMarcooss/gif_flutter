@@ -49,7 +49,6 @@ class DatabaseService {
       }),
     );
 
-    // Mantém apenas os 20 mais recentes
     if (history.length > 20) history = history.sublist(history.length - 20);
 
     await prefs.setStringList('history', history);
@@ -62,7 +61,6 @@ class DatabaseService {
         .map((e) => jsonDecode(e) as Map<String, dynamic>)
         .toList();
 
-    // Ordena do mais recente para o mais antigo
     decoded.sort((a, b) => b['timestamp'].compareTo(a['timestamp']));
     return decoded;
   }

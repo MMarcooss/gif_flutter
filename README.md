@@ -1,100 +1,74 @@
 GIF Flutter
 
 Um aplicativo Flutter para buscar, visualizar e favoritar GIFs usando a API do Giphy.
-Permite também acompanhar histórico de pesquisas e gerenciar favoritos.
+Esta versão demonstra integração com a API do Giphy, armazenamento local de favoritos e
+histórico de pesquisas, e um fluxo simples de estado usando Provider.
 
-Funcionalidades
+## Funcionalidades principais
 
-Buscar GIFs por palavra-chave (tags).
+- Buscar GIFs por palavra-chave (tags) com suporte a paginação.
+- Visualizar GIFs aleatórios com auto-shuffle.
+- Favoritar e remover favoritos (salvos no banco local).
+- Histórico das pesquisas recentes.
+- Filtragem por classificação (G, PG, PG-13, R).
+- Interface responsiva pensada para várias plataformas (mobile, desktop).
 
-Visualizar GIFs aleatórios com auto-shuffle.
+## Tecnologias e dependências
 
-Favoritar GIFs e remover favoritos.
+- Flutter (SDK)
+- Provider - gerenciamento de estado
+- SQFlite - armazenamento local (favoritos, histórico, preferências)
+- http - chamadas à API do Giphy
+- shared_preferences - cache do random_id
 
-Histórico das pesquisas recentes.
+> As dependências reais estão definidas em `pubspec.yaml`.
 
-Controle de classificação (G, PG, PG-13, R).
+## Pré-requisitos
 
-Interface responsiva para diferentes tamanhos de tela.
+- Flutter SDK instalado (compatível com o projeto)
+- Uma chave de API do Giphy (veja abaixo como configurar)
 
-Screenshots
+## Instalação rápida (PowerShell)
 
-(adicione capturas de tela aqui se desejar)
-
-Tecnologias e Dependências
-
-Flutter
-
-Provider (gerenciamento de estado)
-
-SQFlite (armazenamento local de favoritos, histórico e preferências)
-
-HTTP (requisições à API do Giphy)
-
-SharedPreferences (cache do random_id)
-
-Instalação
-
-Clone o repositório:
-
+```powershell
 git clone <URL_DO_REPOSITORIO>
-cd gif_flutter
-
-
-Instale as dependências:
-
+Set-Location -Path .\gif_flutter
 flutter pub get
-
-
-Execute o app:
-
 flutter run
+```
 
-Estrutura de Pastas
-lib/
-├─ core/                  # Constantes e temas
-├─ data/
-│  ├─ controllers/        # Controladores (ex: GifsController)
-│  ├─ models/             # Modelos de dados (ex: GiphyGif)
-│  └─ services/           # Serviços (API, banco de dados)
-├─ features/
-│  └─ gifs/
-│     ├─ screens/         # Páginas do app (random, search, favorites, history)
-│     └─ widgets/         # Widgets reutilizáveis (grid, tile, display)
-└─ main.dart              # Entrada do app
+Substitua `<URL_DO_REPOSITORIO>` pelo URL do repositório.
 
-Uso do Provider
+## Configuração da API do Giphy
 
-O app usa Provider para gerenciamento de estado:
+O app exige uma chave da API do Giphy para buscar GIFs. Há duas opções simples:
 
-GifsController é o provider principal.
+1. Editar diretamente `lib/main.dart` e procurar onde `GiphyService` é instanciado. Substitua
+   `'<SUA_API_KEY_AQUI>'` pela sua chave.
 
-Disponibiliza dados como GIFs, favoritos e histórico para todas as páginas.
+2. (Recomendado para produção) Implementar uma estratégia de variáveis de ambiente ou
+   usar um arquivo de configuração excluído do controle de versão.
 
-Atualiza automaticamente os widgets quando os dados mudam.
+Exemplo mínimo (em `lib/main.dart`):
 
-Exemplo:
-
-final controller = context.watch<GifsController>(); // observa mudanças
-final controller = context.read<GifsController>();  // apenas acessa dados
-
-Configuração da API do Giphy
-
-No arquivo main.dart:
-
+```dart
 GifsController(
   GiphyService(apiKey: '<SUA_API_KEY_AQUI>'),
 )
+```
 
+Depois de inserir a chave, rode `flutter run` novamente.
 
-Substitua <SUA_API_KEY_AQUI> pela sua chave da API do Giphy.
+## Estrutura do projeto (resumida)
 
-Páginas Principais
+Principais pastas em `lib/`:
 
-Random GIF Page: Mostra GIF aleatório com auto-shuffle.
+- `core/` - constantes e tema do app (`constants.dart`, `theme.dart`).
+- `data/controllers/` - `gifs_controller.dart`: lógica e Provider principal.
+- `data/models/` - modelos de dados, por ex. `gif_item.dart`.
+- `data/services/` - serviços como `giphy_service.dart` (API) e `local_storage.dart` (SQFlite).
+- `features/gifs/screens/` - telas: `random_gif.dart`, `search_gif_page.dart`, `favorite_page.dart`, `history_page.dart`, `detail_page.dart`.
+- `features/gifs/widgets/` - widgets reutilizáveis: `gif_grid.dart`, `gif_tile.dart`, `gif_display.dart`, `search_bar.dart`, `state_widgets.dart`.
+- `settings/pages/` - página de configurações (`settings_page.dart`).
 
-Search GIF Page: Busca GIFs por tags e filtra por classificação.
-
-Favorites Page: Lista de GIFs favoritados.
-
-History Page: Histórico das pesquisas recentes.
+Isso ajuda a localizar rapidamente a responsabilidade de cada arquivo.

@@ -14,7 +14,6 @@ class GiphyService {
 
   GiphyService({required this.apiKey});
 
-  /// Inicializa o random_id (necessário para analytics)
   /// Busca do cache ou faz uma chamada à API
   Future<void> initRandomId() async {
     final prefs = await SharedPreferences.getInstance();
@@ -39,7 +38,6 @@ class GiphyService {
         }
       }
     } catch (_) {
-      // Segue sem random_id se falhar
     }
   }
 
